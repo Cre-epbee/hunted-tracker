@@ -20,6 +20,14 @@ from player_data import get_player_data, check_player_details, get_tracked_playe
 from fetch import fetch_json
 from shared_state import tracker_task, detect_world_tasks
 
+# Configuration (from .emv)
+TARGET_LEVEL = int(os.getenv("TARGET_LEVEL", "26"))
+LEVEL_RANGE = int(os.getenv("LEVEL_RANGE", "10"))
+SERVER_REGIONS = os.getenv("SERVER_REGIONS", "EU,NA,AS").split(",")
+SERVERS_PER_REGION = int(os.getenv("SERVERS_PER_REGION", "20"))
+TRACKER_FILE_PATH = "tracker.txt"
+
+
 async def run_detect_world(
 interaction: discord.Interaction,
         world: str,
