@@ -19,6 +19,8 @@ import importlib
 from commands.hello import run_hello
 from commands.scan_hunted import run_scan_hunted
 from commands.tracker import  run_tracker
+from commands.detect_world import run_detect_world
+from commands.sync_leaderboard import run_sync_leaderboard
 from player_data import get_player_data, check_player_details, get_tracked_players
 from fetch import fetch_json
 from shared_state import tracker_task, detect_world_tasks
@@ -143,117 +145,7 @@ async def detect_world(
         interval: Optional[int] = None,
         stop: Optional[bool] = None,
 ):
-    global detect_world_tasks
-
-    # Handle task stop
-    if stop:
-        task = detect_world_tasks.get(world)
-        if task and not task.done():
-            task.cancel()
-            del detect_world_tasks[world]
-            await interaction.response.send_message(f"🛑 World tracker for `{world}` stopped.")
-        else:
-            await interaction.response.send_message(f"⚠️ No active tracker found for world `{world}`.")
-        return
-
-    # Prevent duplicate tasks
-    if world in detect_world_tasks and not detect_world_tasks[world].done():
-        await interaction.response.send_message(
-            f"⚠️ World `{world}` is already being tracked. Use `/detect-world world:{world} stop:True` to stop it first."
-        )
-        return
-
-    await interaction.response.defer(thinking=True)
-
-    async def world_tracker_loop():
-        try:
-            scan_count = 0
-            status_message = None
-
-            while True:
-                scan_count += 1
-                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-                # First-time or updated status
-                content = f"🔍 Scanning world `{world}` (Scan #`{scan_count}`) at `{timestamp}`"
-                if interval:
-                    try:
-                        if status_message:
-                            await status_message.edit(content=content)
-                        else:
-                            status_message = await interaction.followup.send(content)
-                    except discord.HTTPException:
-                        status_message = await interaction.followup.send(content)
-
-                try:
-                    server_data = await asyncio.get_event_loop().run_in_executor(
-                        thread_executor, get_player_data, world
-                    )
-
-                    if not server_data or "players" not in server_data:
-                        await interaction.followup.send(f"⚠️ No data found for world `{world}`.")
-                        break
-
-                    tracked_players = get_tracked_players()
-                    tracked_names = {line.split(",")[0].lower() for line in tracked_players}
-
-                    match_messages = []
-                    server_matches = 0
-
-                    for player_uuid in server_data.get("players", []):
-                        player_name, matches = await asyncio.get_event_loop().run_in_executor(
-                            thread_executor, check_player_details, player_uuid, level, LEVEL_RANGE
-                        )
-
-                        for match in matches:
-                            server_matches += 1
-                            is_hich = match["is_hich"]
-                            match_messages.append(
-                                f"`{match['player_name']}`{' [HICH]' if is_hich else ''} - "
-                                f"Class: `{match['character_type']}`, Level: `{match['level']}`"
-                            )
-
-                            if is_hich and player_name.lower() not in tracked_names:
-                                with open(TRACKER_FILE_PATH, "a") as f:
-                                    f.write(f"{player_name},{player_uuid}\n")
-                                tracked_names.add(player_name.lower())
-
-                        await asyncio.sleep(0)  # Yield control after each player
-
-                    if match_messages:
-                        await interaction.followup.send(
-                            f"📝 **Found {server_matches} hunted players in `{world}`:**\n" +
-                            "\n".join(match_messages)
-                        )
-                    else:
-                        if not interval:
-                            await interaction.followup.send(
-                                f"⛔ No level `{level}-Ranged` hunted players found in `{world}`.")
-                        else:
-                            print(f"⛔ No hunted players found in `{world}`.")  #Debugging purposes
-
-                except Exception as e:
-                    await interaction.followup.send(f"⚠️ Error scanning world `{world}`: {e}")
-                    print(f"[ERROR] World scan error ({world}):", e)
-
-                if not interval:
-                    break
-
-                await asyncio.sleep(interval)
-
-        except asyncio.CancelledError:
-            print(f"[INFO] Tracker for world {world} was cancelled.")
-            await interaction.followup.send(f"🛑 World tracker for `{world}` stopped.")
-        except Exception as e:
-            await interaction.followup.send(f"⚠️ Unexpected error in world tracker `{world}`: {e}")
-            print(f"[CRITICAL] Tracker loop error ({world}):", e)
-        finally:
-            detect_world_tasks.pop(world, None)
-
-    # Start the tracking loop
-    if interval:
-        await interaction.followup.send(f"🔁 Starting to track world `{world}` every `{interval}` seconds.")
-    detect_world_tasks[world] = asyncio.create_task(world_tracker_loop())
+    await run_detect_world(interaction, world, level, interval, stop)
 
 
 @client.tree.command(
@@ -267,62 +159,7 @@ async def detect_world(
 async def sync_leaderboard(interaction: discord.Interaction,
                            level: Optional[int] = TARGET_LEVEL,
                            hunted_range: Optional[int] = LEVEL_RANGE):
-    await interaction.response.defer(thinking=True)
-
-    try:
-        HICH_leaderboard_url = "https://api.wynncraft.com/v3/leaderboards/hichContent"
-        leaderboard_data = fetch_json(HICH_leaderboard_url)
-
-        if not isinstance(leaderboard_data, dict) or not leaderboard_data:
-            await interaction.followup.send("⚠️ Failed to retrieve leaderboard data.")
-            return
-
-        tracked_players = get_tracked_players()
-        tracked_names = {line.split(",")[0].lower() for line in tracked_players}
-        new_tracked = []
-        matched_players = []
-
-        for _, entry in leaderboard_data.items():
-            player_name = entry.get("name", "Unknown")
-            uuid = entry.get("uuid", "")
-            character_type = entry.get("characterType", "Unknown")
-            character_type = character_type.upper()
-            character_data = entry.get("characterData", {})
-
-            level_value = character_data.get("level", 0)
-            deaths = character_data.get("deaths", 0)
-
-            # Skip players with deaths
-            if deaths > 0:
-                continue
-
-            # Match based on level range
-            if level - hunted_range <= level_value <= level + hunted_range:
-                matched_players.append(
-                    f"`{player_name}` - Level: `{level_value}` - Class: `{character_type}`"
-                )
-
-                # Add to tracker if not already tracked
-                if player_name.lower() not in tracked_names:
-                    new_tracked.append(f"{player_name},{uuid}\n")
-                    tracked_names.add(player_name.lower())
-
-        # Append new entries to the tracker file
-        if new_tracked:
-            with open(TRACKER_FILE_PATH, "a") as f:
-                f.writelines(new_tracked)
-
-        if matched_players:
-            await interaction.followup.send(
-                f"📝 **Found {len(matched_players)} deathless HICH players in level range `{level} ± {hunted_range}`:**\n" +
-                "\n".join(matched_players)
-            )
-        else:
-            await interaction.followup.send(
-                f"⛔ No deathless HICH players found within level range `{level} ± {hunted_range}`.")
-
-    except Exception as e:
-        await interaction.followup.send(f"⚠️ Error while checking HICH leaderboard: {e}")
+    await run_sync_leaderboard(interaction, level, hunted_range)
 
 
 # Add a command to see all active world trackers and optionally stop them all
