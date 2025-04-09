@@ -30,7 +30,7 @@ TARGET_LEVEL = int(os.getenv("TARGET_LEVEL", "26"))
 LEVEL_RANGE = int(os.getenv("LEVEL_RANGE", "10"))
 SERVER_REGIONS = os.getenv("SERVER_REGIONS", "EU,NA,AS").split(",")
 SERVERS_PER_REGION = int(os.getenv("SERVERS_PER_REGION", "20"))
-CALLS = int(os.getenv("CALLS", "95"))
+CALLS = int(os.getenv("CALLS", "95")) #Adjust this if needed
 PERIOD = int(os.getenv("PERIOD", "60"))
 TRACKER_FILE_PATH = "tracker.txt"
 
@@ -145,7 +145,7 @@ async def detect_world(
         interval: Optional[int] = None,
         stop: Optional[bool] = None,
 ):
-    await run_detect_world(interaction, world, level, interval, stop)
+    await run_detect_world(interaction,thread_executor, world, level, interval, stop)
 
 
 @client.tree.command(

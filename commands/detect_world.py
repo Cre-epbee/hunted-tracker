@@ -13,7 +13,6 @@ from commands.scan_hunted import run_scan_hunted
 from responses import get_response
 from concurrent.futures import ThreadPoolExecutor
 from ratelimit import limits, sleep_and_retry
-import importlib
 
 
 from player_data import get_player_data, check_player_details, get_tracked_players
@@ -30,6 +29,7 @@ TRACKER_FILE_PATH = "tracker.txt"
 
 async def run_detect_world(
 interaction: discord.Interaction,
+        thread_executor,
         world: str,
         level: int = TARGET_LEVEL,
         interval: Optional[int] = None,
