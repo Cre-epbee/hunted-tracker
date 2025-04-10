@@ -1,22 +1,25 @@
 # fetch.py
 from typing import Any
+import asyncio
+import aiohttp
 
-from ratelimit import limits, sleep_and_retry
-import time
-from requests import get, RequestException
+RATE_LIMIT_CALLS = 95
+RATE_LIMIT_PERIOD = 60
 
-@sleep_and_retry
-@limits(calls=95, period=60)
-def fetch_json(url: str) -> dict[Any, Any] | None | Any:
-    while True:
-        try:
-            response = get(url, timeout=10)
-            if response.status_code == 429:
-                retry_after = int(response.headers.get("Retry-After", 5))
-                time.sleep(retry_after)
-                continue
-            response.raise_for_status()
-            return response.json()
-        except RequestException as e:
-            print(f"[ERROR] Fetch failed: {e}")
-            return {}
+semaphore = asyncio.Semaphore(RATE_LIMIT_CALLS)
+
+async def fetch_json(url: str) -> dict[Any, Any] | None:
+    async with semaphore:
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(url, timeout=10) as response:
+                    if response.status == 429:
+                        retry_after = int(response.headers.get("Retry-After", 5))
+                        print(f"[429] Retrying after {retry_after}s...")
+                        await asyncio.sleep(retry_after)
+                        return await fetch_json(url)  # Retry
+                    response.raise_for_status()
+                    return await response.json()
+            except aiohttp.ClientError as e:
+                print(f"[ERROR] Fetch failed: {e}")
+                return {}

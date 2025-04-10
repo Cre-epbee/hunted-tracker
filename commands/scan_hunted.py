@@ -35,7 +35,7 @@ async def run_scan_hunted(
 
     # Initial message
     await interaction.response.defer(thinking=True)
-    await interaction.followup.send(f"Starting scan at `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`s\n" + "-" * 60)
+    await interaction.followup.send(f"Starting scan at `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`\n" + "-" * 60)
 
     # Send a status message that we'll update
     status_message = await interaction.followup.send("Initialising scan...")
