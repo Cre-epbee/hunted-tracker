@@ -21,7 +21,8 @@ from commands.tracker import  run_tracker
 from commands.detect_world import run_detect_world
 from commands.sync_leaderboard import run_sync_leaderboard
 from commands.active_trackers import run_active_trackers
-from player_data import get_player_data, check_player_details, get_tracked_players
+from commands.advanced_tracker import run_advanced_tracker
+from player_data import get_player_data, check_player_details, get_tracked_players, get_advanced_tracked_players
 from fetch import fetch_json
 from shared_state import tracker_task, detect_world_tasks
 
@@ -33,11 +34,13 @@ SERVERS_PER_REGION = int(os.getenv("SERVERS_PER_REGION", "20"))
 CALLS = int(os.getenv("CALLS", "95")) #Adjust this if needed
 PERIOD = int(os.getenv("PERIOD", "60"))
 TRACKER_FILE_PATH = "tracker.txt"
+ADVANCED_TRACKER_FILE_PATH = "advanced_tracker.txt"
 
 
 # Create tracker file if it doesn't exist
-if not os.path.exists(TRACKER_FILE_PATH):
+if not os.path.exists(TRACKER_FILE_PATH) and not os.path.exists(ADVANCED_TRACKER_FILE_PATH):
     open(TRACKER_FILE_PATH, "w").close()
+    open(ADVANCED_TRACKER_FILE_PATH, "w").close()
 
 # Load environment variables and set up the bot
 load_dotenv()
@@ -95,7 +98,7 @@ async def scan_hunted(
     list_players="List all currently tracked players",
     find="Find if tracked players are online with hunted class",
     interval="How often (in seconds) to check for hunted players (only with 'find')",
-    stop="Stop the currently running tracker scan"
+    stop="Stop the currently running tracker scan",
 )
 async def tracker(
         interaction: discord.Interaction,
@@ -104,10 +107,34 @@ async def tracker(
         list_players: Optional[bool] = None,
         find: Optional[bool] = None,
         interval: Optional[int] = None,
-        stop: Optional[bool] = None
+        stop: Optional[bool] = None,
 ):
     await run_tracker(interaction, add, remove, list_players, find, interval, stop)
 
+@client.tree.command(
+    name="advance-tracking",
+    description="Track specific character info (combat + professions)"
+)
+@app_commands.describe(
+    add="Add a character by player name",
+    char_uuid="Character UUID (manually copy from stats)",
+    remove="Remove by player name",
+    list_entries="List all tracked character entries",
+    compare="Compare a player's progress 3minutes ago",
+    interval="How often the command compare",
+    stop="Stop the currently running tracker scan"
+)
+async def track_character(
+    interaction: discord.Interaction,
+    add: Optional[str] = None,
+    char_uuid: Optional[str] = None,
+    remove: Optional[str] = None,
+    list_entries: Optional[bool] = None,
+    compare: Optional[bool] = None,
+    interval: Optional[int] = None,
+    stop: Optional[bool] = None
+):
+    await run_advanced_tracker(interaction,add,char_uuid,remove,list_entries,compare,interval,stop)
 
 @client.tree.command(
     name="detect-world",

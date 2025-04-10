@@ -4,6 +4,7 @@ import os
 
 # Configuration
 TRACKER_FILE_PATH = "tracker.txt"
+ADVANCED_TRACKER_FILE_PATH = "advanced_tracker.txt"
 
 
 async def get_player_data(server_id: str) -> Dict[str, Any]:
@@ -64,6 +65,7 @@ async def check_player_details(player_uuid: str, target_level: int, level_range:
                 matches.append({
                     "player_name": player_name,
                     "character_type": character.get("type", "Unknown"),
+                    "character_id": cid,
                     "level": level,
                     "is_hich": is_hich,  # Now is_hich will be False if deaths > 0
                     "gamemodes": gamemodes,
@@ -85,3 +87,11 @@ async def get_tracked_players() -> List[str]:
             return [line.strip() for line in f if line.strip() and "," in line]
     except FileNotFoundError:
         return []
+
+async def get_advanced_tracked_players() -> List[str]:
+    try:
+        with open(ADVANCED_TRACKER_FILE_PATH, "r") as f:
+            return [line.strip() for line in f if line.strip() and "," in line]
+    except FileNotFoundError:
+        return []
+

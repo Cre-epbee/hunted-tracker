@@ -3,7 +3,7 @@ import asyncio
 from discord import Interaction
 from discord import app_commands
 from typing import Optional
-from player_data import get_player_data, check_player_details, get_tracked_players
+from player_data import get_player_data, check_player_details, get_tracked_players,get_advanced_tracked_players
 import os
 
 # Configuration (from .emv)
@@ -87,7 +87,7 @@ async def run_scan_hunted(
                         # Track newly detected HICH/HUICH players
                         if player_name.lower() not in tracked_names:
                             with open(TRACKER_FILE_PATH, "a") as tracker_file:
-                                tracker_file.write(f"{player_name},{player_uuid}\n")
+                                tracker_file.write(f"{player_name},{player_uuid},\n")
                             match_messages.append(f"📝 Added new HICH/HUICH player: `{player_name}` to the tracker")
                         else:
                             match_messages.append("This HICH/HUICH is already in the tracker")

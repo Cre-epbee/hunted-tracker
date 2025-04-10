@@ -3,7 +3,7 @@ import asyncio
 import discord
 from discord import Interaction
 from typing import Optional
-from player_data import get_player_data, check_player_details, get_tracked_players
+from player_data import get_player_data, check_player_details, get_tracked_players, get_advanced_tracked_players
 import os
 from shared_state import tracker_task
 from fetch import fetch_json  # This must be an async function using aiohttp
@@ -13,6 +13,8 @@ import aiofiles
 TARGET_LEVEL = int(os.getenv("TARGET_LEVEL", "26"))
 LEVEL_RANGE = int(os.getenv("LEVEL_RANGE", "10"))
 TRACKER_FILE_PATH = "tracker.txt"
+ADVANCED_TRACKER_FILE_PATH = "advanced_tracker.txt"
+
 
 
 async def run_tracker(
@@ -27,6 +29,7 @@ async def run_tracker(
     global tracker_task
     await interaction.response.defer(thinking=True)
 
+
     # Ensure only one action is provided
     if sum(bool(arg) for arg in [add, remove, list_players, find, stop]) != 1:
         await interaction.followup.send("⚠️ Use exactly one of: `add`, `remove`, `list`, `find`, or `stop`.")
@@ -35,6 +38,9 @@ async def run_tracker(
     if interval and not find:
         await interaction.followup.send("⚠️ `interval` is only valid with `find=True`.")
         return
+
+
+
 
     # ✅ Add
     if add:
