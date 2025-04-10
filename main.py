@@ -128,7 +128,7 @@ async def detect_world(
         interval: Optional[int] = None,
         stop: Optional[bool] = None,
 ):
-    await run_detect_world(interaction,thread_executor, world, level, level_range, interval, stop)
+    await run_detect_world(interaction, world, level, level_range, interval, stop)
 
 
 @client.tree.command(

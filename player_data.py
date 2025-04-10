@@ -21,9 +21,9 @@ async def get_player_data(server_id: str) -> Dict[str, Any]:
     return await fetch_json(server_url) or {"players": []}
 
 
-async def check_player_details(player_uuid: str,target_level: int,level_range: int) -> Union[Tuple[None, List[Any]], Tuple[str, List[Dict[str, Any]]]]:
+async def check_player_details(player_uuid: str, target_level: int, level_range: int) -> Union[Tuple[None, List[Any]], Tuple[str, List[Dict[str, Any]]]]:
     """
-    Check if a player has characters within the target level range
+    Check if a player has characters within the target level range and also check if they have deaths.
 
     Args:
         player_uuid: Player UUID to check
@@ -52,23 +52,28 @@ async def check_player_details(player_uuid: str,target_level: int,level_range: i
             if abs(level - target_level) <= level_range and cid == active_character_id:
                 gamemodes = character.get("gamemode", [])
 
-                # More detailed HICH detection from your code
-                is_hich = all(mode in gamemodes for mode in ["craftsman", "hunted", "hardcore"]) and (
-                        "ironman" in gamemodes or "ultimate_ironman" in gamemodes
-                )
+                # Fetching the number of deaths directly (from the character data)
+                deaths = character.get("deaths", 0)  # Default to 0 if deaths is None or missing
+
+                # Setting is_hich to False if deaths > 0
+                is_hich = False if deaths > 0 else all(
+                    mode in gamemodes for mode in ["craftsman", "hunted", "hardcore"]) and (
+                                                           "ironman" in gamemodes or "ultimate_ironman" in gamemodes
+                                                   )
 
                 matches.append({
                     "player_name": player_name,
                     "character_type": character.get("type", "Unknown"),
                     "level": level,
-                    "is_hich": is_hich,
-                    "gamemodes": gamemodes
+                    "is_hich": is_hich,  # Now is_hich will be False if deaths > 0
+                    "gamemodes": gamemodes,
+                    "deaths": deaths  # Add deaths field to the match details
                 })
 
     return player_name, matches
 
 
-def get_tracked_players() -> List[str]:
+async def get_tracked_players() -> List[str]:
     """
     Get list of tracked players from the tracker file
 

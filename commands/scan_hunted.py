@@ -23,7 +23,6 @@ async def run_scan_hunted(
 
     Args:
         interaction: Discord interaction
-        thread_executor: ThreadPoolExecutor for running blocking API calls
         target_level: Target level to search for
         level_range: Level range around target
     """
@@ -40,7 +39,7 @@ async def run_scan_hunted(
     status_message = await interaction.followup.send("Initialising scan...")
 
     # Get tracked players for HICH detection
-    tracked_players = get_tracked_players()
+    tracked_players = await get_tracked_players()
     tracked_names = [line.split(",")[0].lower() for line in tracked_players]
 
     # Main logic

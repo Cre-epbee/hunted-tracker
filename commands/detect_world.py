@@ -28,7 +28,6 @@ TRACKER_FILE_PATH = "tracker.txt"
 
 async def run_detect_world(
 interaction: discord.Interaction,
-        thread_executor,
         world: str,
         level: int = TARGET_LEVEL,
         level_range: int = LEVEL_RANGE,
@@ -78,24 +77,20 @@ interaction: discord.Interaction,
                         status_message = await interaction.followup.send(content)
 
                 try:
-                    server_data = await asyncio.get_event_loop().run_in_executor(
-                        thread_executor, get_player_data, world
-                    )
+                    server_data = await get_player_data(world)
 
                     if not server_data or "players" not in server_data:
                         await interaction.followup.send(f"⚠️ No data found for world `{world}`.")
                         break
 
-                    tracked_players = get_tracked_players()
+                    tracked_players = await get_tracked_players()
                     tracked_names = {line.split(",")[0].lower() for line in tracked_players}
 
                     match_messages = []
                     server_matches = 0
 
                     for player_uuid in server_data.get("players", []):
-                        player_name, matches = await asyncio.get_event_loop().run_in_executor(
-                            thread_executor, check_player_details, player_uuid, level, level_range
-                        )
+                        player_name, matches = await check_player_details(player_uuid, level, level_range)
 
                         for match in matches:
                             server_matches += 1
