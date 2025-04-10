@@ -116,6 +116,7 @@ async def tracker(
 @app_commands.describe(
     world="Enter your world number (e.g. EU1, NA2, AS3)",
     level="Your combat level (Default is 26)",
+    level_range="Level range around target (default: 10)",
     interval="How often (in seconds) to scan the world (leave empty for a one-time scan)",
     stop="Set to True to stop a running detect-world task for the specified world"
 )
@@ -123,10 +124,11 @@ async def detect_world(
         interaction: discord.Interaction,
         world: str,
         level: int = TARGET_LEVEL,
+        level_range: int = LEVEL_RANGE,
         interval: Optional[int] = None,
         stop: Optional[bool] = None,
 ):
-    await run_detect_world(interaction,thread_executor, world, level, interval, stop)
+    await run_detect_world(interaction,thread_executor, world, level, level_range, interval, stop)
 
 
 @client.tree.command(

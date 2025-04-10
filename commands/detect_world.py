@@ -31,6 +31,7 @@ interaction: discord.Interaction,
         thread_executor,
         world: str,
         level: int = TARGET_LEVEL,
+        level_range: int = LEVEL_RANGE,
         interval: Optional[int] = None,
         stop: Optional[bool] = None,
 ):
@@ -93,7 +94,7 @@ interaction: discord.Interaction,
 
                     for player_uuid in server_data.get("players", []):
                         player_name, matches = await asyncio.get_event_loop().run_in_executor(
-                            thread_executor, check_player_details, player_uuid, level, LEVEL_RANGE
+                            thread_executor, check_player_details, player_uuid, level, level_range
                         )
 
                         for match in matches:
@@ -119,7 +120,7 @@ interaction: discord.Interaction,
                     else:
                         if not interval:
                             await interaction.followup.send(
-                                f"⛔ No level `{level}-Ranged` hunted players found in `{world}`.")
+                                f"⛔ No level `{level}±{level_range}` hunted players found in `{world}`.")
                         else:
                             print(f"⛔ No hunted players found in `{world}`.")  # Debugging purposes
 
