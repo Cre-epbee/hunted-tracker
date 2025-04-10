@@ -6,7 +6,7 @@ import os
 TRACKER_FILE_PATH = "tracker.txt"
 
 
-def get_player_data(server_id: str) -> Dict[str, Any]:
+async def get_player_data(server_id: str) -> Dict[str, Any]:
     """
     Fetch player data for a specific server
 
@@ -18,10 +18,10 @@ def get_player_data(server_id: str) -> Dict[str, Any]:
     """
     # Your original endpoint seems more appropriate
     server_url = f"https://api.wynncraft.com/v3/player?identifier=uuid&server={server_id}"
-    return fetch_json(server_url) or {"players": []}
+    return await fetch_json(server_url) or {"players": []}
 
 
-def check_player_details(player_uuid: str,target_level: int,level_range: int) -> Union[Tuple[None, List[Any]], Tuple[str, List[Dict[str, Any]]]]:
+async def check_player_details(player_uuid: str,target_level: int,level_range: int) -> Union[Tuple[None, List[Any]], Tuple[str, List[Dict[str, Any]]]]:
     """
     Check if a player has characters within the target level range
 
@@ -34,7 +34,7 @@ def check_player_details(player_uuid: str,target_level: int,level_range: int) ->
         Tuple of (player_name, list of matching characters)
     """
     stats_url = f"https://api.wynncraft.com/v3/player/{player_uuid}?fullResult"
-    player_data = fetch_json(stats_url)
+    player_data = await fetch_json(stats_url)
 
     if not player_data or "characters" not in player_data:
         return None, []

@@ -16,7 +16,6 @@ TRACKER_FILE_PATH = "tracker.txt"
 
 async def run_scan_hunted(
         interaction: Interaction,
-        thread_executor,
         target_level: int = TARGET_LEVEL,
         level_range: int = LEVEL_RANGE):
     """
@@ -50,8 +49,8 @@ async def run_scan_hunted(
             server_id = f"{region}{server_number}"
 
             # Use thread executor for API calls to prevent blocking the event loop
-            server_data = await asyncio.get_event_loop().run_in_executor(
-                thread_executor, get_player_data, server_id)
+            server_data = await get_player_data(server_id)
+
 
             # Get player count for this server
             players_in_server = len(server_data.get("players", []))
@@ -72,8 +71,7 @@ async def run_scan_hunted(
             # Process each player in the server
             for player_uuid in server_data.get("players", []):
                 # Use thread executor for API calls to prevent blocking the event loop
-                player_name, matches = await asyncio.get_event_loop().run_in_executor(
-                    thread_executor, check_player_details, player_uuid, target_level, level_range)
+                player_name, matches = await check_player_details(player_uuid, target_level, level_range)
 
                 # Process matches if any found
                 for match in matches:

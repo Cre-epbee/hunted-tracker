@@ -84,7 +84,7 @@ async def scan_hunted(
         target_level: int = TARGET_LEVEL,
         level_range: int = LEVEL_RANGE):
     # Call the imported function, passing the thread_executor
-    await run_scan_hunted(interaction, thread_executor, target_level, level_range)
+    await run_scan_hunted(interaction, target_level, level_range)
 
 
 # Update the tracker command to handle its own task
