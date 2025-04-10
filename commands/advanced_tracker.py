@@ -63,7 +63,7 @@ async def run_advanced_tracker(interaction: discord.Interaction,
             adjusted_level = level + (xp_percent * 0.01)
             prof_levels.append(f"{prof}:{adjusted_level:.2f}")
 
-        prof_levels.sort()  # Sort after collecting all profs
+        prof_levels.sort()  # Sort after collecting all profs for comparing
 
         line = f"{add},{char_class},{player_uuid},{char_uuid},combat:{combat_level:.2f}," + ",".join(prof_levels) + "\n"
 
@@ -259,7 +259,7 @@ async def run_advanced_tracker(interaction: discord.Interaction,
                                 f"{player_name},{char_data.get('type')},{profile_data['uuid']},{char_uuid},"
                                 f"combat:{combat_level:.2f}," +
                                 ",".join(f"{k}:{v:.2f}" for k, v in sorted(current_prof_levels.items())) +
-                                "\n"  # ✅ Make sure this newline is here
+                                "\n"  
                         )
 
                         updated_lines.append(new_line)
