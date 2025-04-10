@@ -22,6 +22,7 @@ async def run_advanced_tracker(interaction: discord.Interaction,
 
     await interaction.response.defer(thinking=True)
 
+
     # Only one action allowed
     if sum(bool(x) for x in [add, remove, list_entries,compare]) != 1:
         await interaction.followup.send("⚠️ Use one of: `add`, `remove`, or `list_entries=True`.")
@@ -59,18 +60,24 @@ async def run_advanced_tracker(interaction: discord.Interaction,
         for prof, prof_data in professions.items():
             level = prof_data.get("level", 0)
             xp_percent = prof_data.get("xpPercent", 0)
-            # Calculate the adjusted level: level + (xpPercent * 0.01)
             adjusted_level = level + (xp_percent * 0.01)
-            prof_levels.append(f"{prof}:{adjusted_level:.2f}")  # Adjust the level to two decimal places
-            prof_levels.sort()
+            prof_levels.append(f"{prof}:{adjusted_level:.2f}")
 
-        async with aiofiles.open(ADVANCED_TRACKER_FILE_PATH, "a") as f:
-            line = f"{add},{char_class},{player_uuid},{char_uuid},combat:{combat_level}," + ",".join(prof_levels) + "\n"
-            await f.write(line)
+        prof_levels.sort()  # Sort after collecting all profs
+
+        line = f"{add},{char_class},{player_uuid},{char_uuid},combat:{combat_level:.2f}," + ",".join(prof_levels) + "\n"
+
+        try:
+            async with aiofiles.open(ADVANCED_TRACKER_FILE_PATH, "a") as f:
+                await f.write(line)
+        except Exception as e:
+            await interaction.followup.send(f"❌ Failed to write to file: {e}")
+            return
 
         await interaction.followup.send(
-            f"✅ Tracked `{add}` (character UUID: `{char_uuid}`) with combat level `{combat_level}`"
+            f"✅ Tracked `{add}` (character UUID: `{char_uuid}`) with combat level `{combat_level:.2f}`"
         )
+
 
 
 
@@ -189,6 +196,15 @@ async def run_advanced_tracker(interaction: discord.Interaction,
                     player_name = parts[0]
                     char_uuid = parts[3]
 
+                    #Fetch online status
+                    profile_url = f"https://api.wynncraft.com/v3/player/{player_name}?fullResult"
+                    profile_data = await fetch_json(profile_url)
+
+                    if not profile_data or "uuid" not in profile_data:
+                        continue
+
+                    world = profile_data.get("server", "Offline")
+
                     # Fetch character data
                     char_url = f"https://api.wynncraft.com/v3/player/{player_name}/characters/{char_uuid}"
                     char_data = await fetch_json(char_url)
@@ -221,13 +237,34 @@ async def run_advanced_tracker(interaction: discord.Interaction,
                     )
 
                     if combat_diff or prof_diff:
-                        new_line = f"{player_name},{parts[1]},{parts[2]},{char_uuid},combat:{combat_level}," + ",".join(
-                            f"{k}:{v:.2f}" for k, v in sorted(current_prof_levels.items())
-                        ) + "\n"
+                        changes = []
+
+                        if combat_diff:
+                            changes.append(f"• Combat: {previous_combat_level:.2f} → {combat_level:.2f}")
+
+                        changed_profs = []
+                        for prof, new_value in current_prof_levels.items():
+                            old_value = previous_prof_levels.get(prof)
+                            if old_value is not None and abs(new_value - old_value) > 0.01:
+                                changed_profs.append(f"  - {prof.capitalize()}: {old_value:.2f} → {new_value:.2f}")
+
+                        if changed_profs:
+                            changes.append("• Changed Professions:\n" + "\n".join(changed_profs))
+
+                        changes.append(f"• 🌍 World: `{world}`")
+
+                        results.append(f"🔄 `{player_name}` updated stats:\n" + "\n".join(changes))
+
+                        new_line = (
+                                f"{player_name},{char_data.get('type')},{profile_data['uuid']},{char_uuid},"
+                                f"combat:{combat_level:.2f}," +
+                                ",".join(f"{k}:{v:.2f}" for k, v in sorted(current_prof_levels.items())) +
+                                "\n"  # ✅ Make sure this newline is here
+                        )
+
                         updated_lines.append(new_line)
-                        results.append(f"📈 `{player_name}` updated! Combat: {combat_level:.2f}")
                     else:
-                        updated_lines.append(line)
+                        updated_lines.append(line if line.endswith("\n") else line + "\n")
 
                 # Rewrite the file with updated lines
                 async with aiofiles.open(ADVANCED_TRACKER_FILE_PATH, "w") as f:
