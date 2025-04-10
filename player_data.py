@@ -95,3 +95,27 @@ async def get_advanced_tracked_players() -> List[str]:
     except FileNotFoundError:
         return []
 
+
+async def get_detail_character_data(playerName, character_uuid):
+    char_url = f"https://api.wynncraft.com/v3/player/{playerName}/characters/{character_uuid}"
+    data = await fetch_json(char_url)
+
+    if not data or "type" not in data:
+        await interaction.followup.send("❌ Character data not found.")
+        return
+
+    combat_level = int(data.get("level", 0)) + (data.get("xpPercent", 0) * 0.01)
+    professions = data.get("professions", {})
+    char_class = data.get("type", None)
+
+    # Build profession string with level + xpPercent * 0.01
+    prof_levels = []
+    for prof, prof_data in professions.items():
+        level = prof_data.get("level", 0)
+        xp_percent = prof_data.get("xpPercent", 0)
+        adjusted_level = level + (xp_percent * 0.01)
+        prof_levels.append(f"{prof}:{adjusted_level:.2f}")
+
+    prof_levels.sort()  # Sort after collecting all profs for comparing
+
+    return combat_level,char_class,prof_levels

@@ -4,7 +4,7 @@ from discord import app_commands, Interaction
 from typing import Optional
 from fetch import fetch_json
 import textwrap
-from player_data import get_advanced_tracked_players
+from player_data import get_advanced_tracked_players, get_detail_character_data
 import asyncio
 import aiohttp
 
@@ -44,26 +44,7 @@ async def run_advanced_tracker(interaction: discord.Interaction,
         player_uuid = profile_data["uuid"]
 
         # 2. Get character data
-        char_url = f"https://api.wynncraft.com/v3/player/{add}/characters/{char_uuid}"
-        data = await fetch_json(char_url)
-
-        if not data or "type" not in data:
-            await interaction.followup.send("❌ Character data not found.")
-            return
-
-        combat_level = int(data.get("level", 0)) + (data.get("xpPercent", 0) * 0.01)
-        professions = data.get("professions", {})
-        char_class = data.get("type", None)
-
-        # Build profession string with level + xpPercent * 0.01
-        prof_levels = []
-        for prof, prof_data in professions.items():
-            level = prof_data.get("level", 0)
-            xp_percent = prof_data.get("xpPercent", 0)
-            adjusted_level = level + (xp_percent * 0.01)
-            prof_levels.append(f"{prof}:{adjusted_level:.2f}")
-
-        prof_levels.sort()  # Sort after collecting all profs for comparing
+        combat_level, char_class, prof_levels =  get_detail_character_data(add,char_uuid)
 
         line = f"{add},{char_class},{player_uuid},{char_uuid},combat:{combat_level:.2f}," + ",".join(prof_levels) + "\n"
 
@@ -75,11 +56,8 @@ async def run_advanced_tracker(interaction: discord.Interaction,
             return
 
         await interaction.followup.send(
-            f"✅ Tracked `{add}` (character UUID: `{char_uuid}`) with combat level `{combat_level:.2f}`"
+            f"✅ Tracked `{add}` (character UUID: `{char_uuid}`) with Combat level `{combat_level:.2f}`"
         )
-
-
-
 
     elif remove:
         try:
@@ -222,6 +200,7 @@ async def run_advanced_tracker(interaction: discord.Interaction,
                         adjusted_level = level + (xp_percent * 0.01)
                         current_prof_levels[prof] = adjusted_level
 
+
                     # Parse previous levels
                     previous_combat_level = float(parts[4].split(":")[1])
                     previous_prof_levels = {
@@ -253,7 +232,8 @@ async def run_advanced_tracker(interaction: discord.Interaction,
 
                         changes.append(f"• 🌍 World: `{world}`")
 
-                        results.append(f"🔄 `{player_name}` updated stats:\n" + "\n".join(changes))
+                        results.append(f"{interaction.user.mention}\n"
+                                       f"🔄`{player_name}` updated stats:\n" + "\n".join(changes))
 
                         new_line = (
                                 f"{player_name},{char_data.get('type')},{profile_data['uuid']},{char_uuid},"

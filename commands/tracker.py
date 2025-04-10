@@ -3,7 +3,7 @@ import asyncio
 import discord
 from discord import Interaction
 from typing import Optional
-from player_data import get_player_data, check_player_details, get_tracked_players, get_advanced_tracked_players
+from player_data import get_player_data, check_player_details, get_tracked_players
 import os
 from shared_state import tracker_task
 from fetch import fetch_json  # This must be an async function using aiohttp
@@ -13,9 +13,6 @@ import aiofiles
 TARGET_LEVEL = int(os.getenv("TARGET_LEVEL", "26"))
 LEVEL_RANGE = int(os.getenv("LEVEL_RANGE", "10"))
 TRACKER_FILE_PATH = "tracker.txt"
-ADVANCED_TRACKER_FILE_PATH = "advanced_tracker.txt"
-
-
 
 async def run_tracker(
     interaction: Interaction,
