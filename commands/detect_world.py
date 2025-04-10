@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 from discord import Intents, Message, app_commands
 from discord.ext import commands
 from commands.scan_hunted import run_scan_hunted
-from responses import get_response
 from concurrent.futures import ThreadPoolExecutor
 from ratelimit import limits, sleep_and_retry
 
