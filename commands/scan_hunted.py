@@ -35,7 +35,7 @@ async def run_scan_hunted(
 
     # Initial message
     await interaction.response.defer(thinking=True)
-    await interaction.followup.send(f"Starting scan at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n" + "-" * 60)
+    await interaction.followup.send(f"Starting scan at `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`s\n" + "-" * 60)
 
     # Send a status message that we'll update
     status_message = await interaction.followup.send("Initialising scan...")
@@ -58,7 +58,7 @@ async def run_scan_hunted(
             total_players_scanned += players_in_server
 
             # Update status message instead of sending a new one
-            await status_message.edit(content=f"Scanning server {server_id}... Found {players_in_server} players")
+            await status_message.edit(content=f"Scanning server `{server_id}`... Found `{players_in_server}` players")
 
             # If server is empty, continue to next server
             if players_in_server == 0:
@@ -111,11 +111,14 @@ async def run_scan_hunted(
 
             # Status update every 5 servers - update the progress in the status message
             if server_number % 5 == 0:
-                progress_message = f"Progress: {region} servers 1-{server_number} complete. Total players scanned: {total_players_scanned}"
+                progress_message = f"Progress: `{region}` servers `1-{server_number}` complete. Total players scanned: `{total_players_scanned}`"
                 await status_message.edit(content=progress_message)
 
             # Allow other tasks to run after processing each server
             await asyncio.sleep(0)
+
+    # Update status message with completion notice
+    await status_message.edit(content="Scan complete! Check results below.")
 
     # Final statistics
     final_message = "\n" + "=" * 60 + "\n"
@@ -126,9 +129,6 @@ async def run_scan_hunted(
         final_message += f"Total HICH matches found: `{total_hich_matches}`\n"
     final_message += f"Target level: `{target_level}` (Range: `±{level_range}`)\n"
     final_message += "=" * 60
-
-    # Update status message with completion notice
-    await status_message.edit(content="Scan complete! Check results below.")
 
     # Send final result
     await interaction.followup.send(final_message)

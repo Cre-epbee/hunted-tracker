@@ -3,9 +3,7 @@ from typing import Final, Any, Optional
 import os
 import discord
 from requests import get, RequestException
-import time
 import asyncio
-from datetime import datetime
 from dotenv import load_dotenv
 from discord import Intents, Message, app_commands
 from discord.ext import commands
