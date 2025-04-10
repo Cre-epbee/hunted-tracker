@@ -7,6 +7,7 @@ from player_data import get_player_data, check_player_details, get_tracked_playe
 import os
 from shared_state import tracker_task
 from fetch import fetch_json  # This must be an async function using aiohttp
+import aiofiles
 
 # Configuration
 TARGET_LEVEL = int(os.getenv("TARGET_LEVEL", "26"))
