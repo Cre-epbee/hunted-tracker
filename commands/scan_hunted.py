@@ -92,7 +92,7 @@ async def run_scan_hunted(
 
                             line = f"{player_name},{char_class},{player_uuid},{match['character_id']},combat:{combat_level:.2f}," + ",".join(prof_levels) + "\n"
                             async with aiofiles.open(TRACKER_FILE_PATH, "a") as tracker_file:
-                                tracker_file.write(line)
+                                await tracker_file.write(line)
                             match_messages.append(f"📝 Added new HICH/HUICH player: `{player_name}` to the advanced tracker")
                         else:
                             match_messages.append("This HICH/HUICH is already in the tracker")

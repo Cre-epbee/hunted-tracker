@@ -54,7 +54,9 @@ async def check_player_details(player_uuid: str, target_level: int, level_range:
                 gamemodes = character.get("gamemode", [])
 
                 # Fetching the number of deaths directly (from the character data)
-                deaths = character.get("deaths", 0)  # Default to 0 if deaths is None or missing
+                deaths = player_data.get("deaths")
+                if deaths is None:
+                    deaths = 0
 
                 # Setting is_hich to False if deaths > 0
                 is_hich = False if deaths > 0 else all(
@@ -97,25 +99,57 @@ async def get_advanced_tracked_players() -> List[str]:
 
 
 async def get_detail_character_data(playerName, character_uuid):
-    char_url = f"https://api.wynncraft.com/v3/player/{playerName}/characters/{character_uuid}"
-    data = await fetch_json(char_url)
+    try:
+        # First try fetching via the player endpoint (which might be more stable)
+        player_url = f"https://api.wynncraft.com/v3/player/{playerName}"
+        player_data = await fetch_json(player_url)
 
-    if not data or "type" not in data:
-        await interaction.followup.send("❌ Character data not found.")
-        return
+        # Check if we got player data
+        if player_data and "characters" in player_data:
+            # Try to find the specific character by UUID
+            characters = player_data.get("characters", {})
+            for char_id, char_data in characters.items():
+                if char_id == character_uuid:
+                    combat_level = int(char_data.get("level", 0)) + (char_data.get("xpPercent", 0) * 0.01)
+                    professions = char_data.get("professions", {})
+                    char_class = char_data.get("type", None)
 
-    combat_level = int(data.get("level", 0)) + (data.get("xpPercent", 0) * 0.01)
-    professions = data.get("professions", {})
-    char_class = data.get("type", None)
+                    # Build profession string with level + xpPercent * 0.01
+                    prof_levels = []
+                    for prof, prof_data in professions.items():
+                        level = prof_data.get("level", 0)
+                        xp_percent = prof_data.get("xpPercent", 0)
+                        adjusted_level = level + (xp_percent * 0.01)
+                        prof_levels.append(f"{prof}:{adjusted_level:.2f}")
 
-    # Build profession string with level + xpPercent * 0.01
-    prof_levels = []
-    for prof, prof_data in professions.items():
-        level = prof_data.get("level", 0)
-        xp_percent = prof_data.get("xpPercent", 0)
-        adjusted_level = level + (xp_percent * 0.01)
-        prof_levels.append(f"{prof}:{adjusted_level:.2f}")
+                    prof_levels.sort()
+                    return combat_level, char_class, prof_levels
 
-    prof_levels.sort()  # Sort after collecting all profs for comparing
+        # If we couldn't find the character via player endpoint, try direct character endpoint
+        char_url = f"https://api.wynncraft.com/v3/player/{playerName}/characters/{character_uuid}"
+        data = await fetch_json(char_url)
 
-    return combat_level,char_class,prof_levels
+        if not data or "type" not in data:
+            print(f"❌ Character data not found for {playerName}, UUID: {character_uuid}")
+            return 0, "Unknown", []
+
+        combat_level = int(data.get("level", 0)) + (data.get("xpPercent", 0) * 0.01)
+        professions = data.get("professions", {})
+        char_class = data.get("type", None)
+
+        # Build profession string with level + xpPercent * 0.01
+        prof_levels = []
+        for prof, prof_data in professions.items():
+            level = prof_data.get("level", 0)
+            xp_percent = prof_data.get("xpPercent", 0)
+            adjusted_level = level + (xp_percent * 0.01)
+            prof_levels.append(f"{prof}:{adjusted_level:.2f}")
+
+        prof_levels.sort()
+
+        return combat_level, char_class, prof_levels
+
+    except Exception as e:
+        print(f"Error fetching character data for {playerName}: {e}")
+        # Return default values in case of error
+        return 0, "Unknown", []

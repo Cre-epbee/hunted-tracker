@@ -12,9 +12,9 @@ from discord.ext import commands
 from commands.scan_hunted import run_scan_hunted
 from concurrent.futures import ThreadPoolExecutor
 from ratelimit import limits, sleep_and_retry
+import aiofiles
 
-
-from player_data import get_player_data, check_player_details, get_tracked_players
+from player_data import get_player_data, check_player_details, get_tracked_players, get_advanced_tracked_players, get_detail_character_data
 from fetch import fetch_json
 from shared_state import tracker_task, detect_world_tasks
 
@@ -24,7 +24,7 @@ LEVEL_RANGE = int(os.getenv("LEVEL_RANGE", "10"))
 SERVER_REGIONS = os.getenv("SERVER_REGIONS", "EU,NA,AS").split(",")
 SERVERS_PER_REGION = int(os.getenv("SERVERS_PER_REGION", "20"))
 TRACKER_FILE_PATH = "tracker.txt"
-
+ADVANCED_TRACKER_FILE_PATH = "advaced_tracker.txt"
 
 async def run_detect_world(
 interaction: discord.Interaction,
@@ -57,6 +57,7 @@ interaction: discord.Interaction,
     await interaction.response.defer(thinking=True)
 
     async def world_tracker_loop():
+        new_tracked = []
         try:
             scan_count = 0
             status_message = None
@@ -83,7 +84,7 @@ interaction: discord.Interaction,
                         await interaction.followup.send(f"⚠️ No data found for world `{world}`.")
                         break
 
-                    tracked_players = await get_tracked_players()
+                    tracked_players = await get_advanced_tracked_players()
                     tracked_names = {line.split(",")[0].lower() for line in tracked_players}
 
                     match_messages = []
@@ -100,10 +101,16 @@ interaction: discord.Interaction,
                                 f"Class: `{match['character_type']}`, Level: `{match['level']}`"
                             )
 
+                            character_uuid = match['character_id']
                             if is_hich and player_name.lower() not in tracked_names:
-                                with open(TRACKER_FILE_PATH, "a") as f:
-                                    f.write(f"{player_name},{player_uuid}\n")
-                                tracked_names.add(player_name.lower())
+                                combat_level, char_class, prof_levels = await get_detail_character_data(player_uuid,character_uuid)
+                                new_tracked.append(
+                                    f"{player_name},{char_class},{uuid},{character_uuid},combat:{combat_level:.2f}," + ",".join(
+                                        prof_levels) + "\n")
+
+                        if new_tracked:
+                            async with aiofiles.open(TRACKER_FILE_PATH, "a") as f:
+                                f.write(new_tracked)
 
                         await asyncio.sleep(0)  # Yield control after each player
 
