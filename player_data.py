@@ -22,17 +22,14 @@ async def get_player_data(server_id: str) -> Dict[str, Any]:
     return await fetch_json(server_url) or {"players": []}
 
 
-async def check_player_details(player_uuid: str, target_level: int, level_range: int) -> Union[Tuple[None, List[Any]], Tuple[str, List[Dict[str, Any]]]]:
+async def check_player_details(player_uuid: str, target_level: int, level_range: int) -> Union[
+    Tuple[None, List[Any]], Tuple[str, List[Dict[str, Any]]]]:
     """
-    Check if a player has characters within the target level range and also check if they have deaths.
-
-    Args:
-        player_uuid: Player UUID to check
-        target_level: Target level to search for
-        level_range: Range around target level
+    Check if a player's active character is within the target level range and
+    has "hunted" gamemode or completed "A Hunter's Calling".
 
     Returns:
-        Tuple of (player_name, list of matching characters)
+        (player_name, matches)
     """
     stats_url = f"https://api.wynncraft.com/v3/player/{player_uuid}?fullResult"
     player_data = await fetch_json(stats_url)
@@ -41,38 +38,45 @@ async def check_player_details(player_uuid: str, target_level: int, level_range:
         return None, []
 
     player_name = player_data.get("username", "Unknown")
-    active_character_id = player_data.get("activeCharacter", "Unknown")
+    active_character_id = player_data.get("activeCharacter")
     matches = []
 
-    for cid, character in player_data.get("characters", {}).items():
-        if not isinstance(character, dict):
-            continue
+    if not active_character_id or active_character_id not in player_data.get("characters", {}):
+        return player_name, []
 
-        if "hunted" in character.get("gamemode", []):
-            level = character.get("level", 0)
-            if abs(level - target_level) <= level_range and cid == active_character_id:
-                gamemodes = character.get("gamemode", [])
+    character = player_data["characters"][active_character_id]
 
-                # Fetching the number of deaths directly (from the character data)
-                deaths = player_data.get("deaths")
-                if deaths is None:
-                    deaths = 0
+    level = character.get("level", 0)
+    gamemodes = character.get("gamemode", [])
+    deaths = character.get("deaths") or 0  # Safe fallback if deaths=None
+    quests = character.get("quests", [])
 
-                # Setting is_hich to False if deaths > 0
-                is_hich = False if deaths > 0 else all(
-                    mode in gamemodes for mode in ["craftsman", "hunted", "hardcore"]) and (
-                                                           "ironman" in gamemodes or "ultimate_ironman" in gamemodes
-                                                   )
+    # Check conditions
+    is_in_level_range = abs(level - target_level) <= level_range
+    has_hunted_gamemode = "hunted" in gamemodes
+    has_hunters_calling = "A Hunter's Calling" in quests
 
-                matches.append({
-                    "player_name": player_name,
-                    "character_type": character.get("type", "Unknown"),
-                    "character_id": cid,
-                    "level": level,
-                    "is_hich": is_hich,  # Now is_hich will be False if deaths > 0
-                    "gamemodes": gamemodes,
-                    "deaths": deaths  # Add deaths field to the match details
-                })
+    toggle_hunted = has_hunters_calling
+
+    # Determine HICH status (strictly requiring all 4 gamemodes)
+    is_hich = False
+    if deaths == 0:
+        required_modes = {"craftsman", "hunted", "hardcore", "ironman"}
+        if required_modes.issubset(set(gamemodes)):
+            is_hich = True
+
+    # If hunted or has completed the quest and within level range
+    if (has_hunted_gamemode or has_hunters_calling) and is_in_level_range:
+        matches.append({
+            "player_name": player_name,
+            "character_type": character.get("type", "Unknown"),
+            "character_id": active_character_id,
+            "level": level,
+            "is_hich": is_hich,
+            "gamemodes": gamemodes,
+            "deaths": deaths,
+            "toggleHunted": toggle_hunted
+        })
 
     return player_name, matches
 
